@@ -18,6 +18,11 @@
   RVTEST_FP_ENABLE;                                                     \
   .endm
 
+#define RVTEST_RV64UV                                                   \
+  .macro init;                                                          \
+  RVTEST_VECTOR_ENABLE;                                                 \
+  .endm
+
 #define RVTEST_RV32U                                                    \
   .macro init;                                                          \
   .endm
@@ -25,6 +30,11 @@
 #define RVTEST_RV32UF                                                   \
   .macro init;                                                          \
   RVTEST_FP_ENABLE;                                                     \
+  .endm
+
+#define RVTEST_RV32UV                                                   \
+  .macro init;                                                          \
+  RVTEST_VECTOR_ENABLE;                                                 \
   .endm
 
 #define RVTEST_RV64M                                                    \
@@ -52,6 +62,39 @@
 #else
 # define CHECK_XLEN li a0, 1; slli a0, a0, 31; bltz a0, 1f; RVTEST_PASS; 1:
 #endif
+
+#define INIT_XREG                                                       \
+  li x1, 0;                                                             \
+  li x2, 0;                                                             \
+  li x3, 0;                                                             \
+  li x4, 0;                                                             \
+  li x5, 0;                                                             \
+  li x6, 0;                                                             \
+  li x7, 0;                                                             \
+  li x8, 0;                                                             \
+  li x9, 0;                                                             \
+  li x10, 0;                                                            \
+  li x11, 0;                                                            \
+  li x12, 0;                                                            \
+  li x13, 0;                                                            \
+  li x14, 0;                                                            \
+  li x15, 0;                                                            \
+  li x16, 0;                                                            \
+  li x17, 0;                                                            \
+  li x18, 0;                                                            \
+  li x19, 0;                                                            \
+  li x20, 0;                                                            \
+  li x21, 0;                                                            \
+  li x22, 0;                                                            \
+  li x23, 0;                                                            \
+  li x24, 0;                                                            \
+  li x25, 0;                                                            \
+  li x26, 0;                                                            \
+  li x27, 0;                                                            \
+  li x28, 0;                                                            \
+  li x29, 0;                                                            \
+  li x30, 0;                                                            \
+  li x31, 0;
 
 #define INIT_PMP                                                        \
   la t0, 1f;                                                            \
@@ -92,6 +135,12 @@
 
 #define RVTEST_FP_ENABLE                                                \
   li a0, MSTATUS_FS & (MSTATUS_FS >> 1);                                \
+  csrs mstatus, a0;                                                     \
+  csrwi fcsr, 0
+
+#define RVTEST_VECTOR_ENABLE                                            \
+  li a0, (MSTATUS_VS & (MSTATUS_VS >> 1)) |                             \
+         (MSTATUS_FS & (MSTATUS_FS >> 1));                              \
   csrs mstatus, a0;                                                     \
   csrwi fcsr, 0
 
@@ -142,8 +191,9 @@ handle_exception:                                                       \
         sw TESTNUM, tohost, t5;                                         \
         j write_tohost;                                                 \
 reset_vector:                                                           \
+        INIT_XREG;                                                      \
         RISCV_MULTICORE_DISABLE;                                        \
-        INIT_SATP;                                                     \
+        INIT_SATP;                                                      \
         INIT_PMP;                                                       \
         DELEGATE_NO_TRAPS;                                              \
         li TESTNUM, 0;                                                  \
@@ -161,8 +211,6 @@ reset_vector:                                                           \
                (1 << CAUSE_USER_ECALL) |                                \
                (1 << CAUSE_BREAKPOINT);                                 \
         csrw medeleg, t0;                                               \
-        csrr t1, medeleg;                                               \
-        bne t0, t1, other_exception;                                    \
 1:      csrwi mstatus, 0;                                               \
         init;                                                           \
         EXTRA_INIT;                                                     \
@@ -193,6 +241,8 @@ reset_vector:                                                           \
 1:      beqz TESTNUM, 1b;                                               \
         sll TESTNUM, TESTNUM, 1;                                        \
         or TESTNUM, TESTNUM, 1;                                         \
+        li a7, 93;                                                      \
+        addi a0, TESTNUM, 0;                                            \
         ecall
 
 //-----------------------------------------------------------------------
