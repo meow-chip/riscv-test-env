@@ -188,7 +188,8 @@ handle_exception:                                                       \
         /* some unhandlable exception occurred */                       \
   1:    ori TESTNUM, TESTNUM, 1337;                                     \
   write_tohost:                                                         \
-        sw TESTNUM, tohost, t5;                                         \
+        li t0, 0x1FFFFFF80000000;                                       \
+        sw TESTNUM, 0(t0);                                              \
         j write_tohost;                                                 \
 reset_vector:                                                           \
         INIT_XREG;                                                      \
