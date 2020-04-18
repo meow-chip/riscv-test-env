@@ -188,7 +188,7 @@ handle_exception:                                                       \
         /* some unhandlable exception occurred */                       \
   1:    ori TESTNUM, TESTNUM, 1337;                                     \
   write_tohost:                                                         \
-        li t0, 0x1FFFFFF80000000;                                       \
+        li t0, 0xFFFFFFFF80000000;                                       \
         sw TESTNUM, 0(t0);                                              \
         j write_tohost;                                                 \
 reset_vector:                                                           \
@@ -234,8 +234,11 @@ reset_vector:                                                           \
 //-----------------------------------------------------------------------
 
 #define RVTEST_PASS                                                     \
-        lui ra, 0x100           ;                                       \
-        ret                     ;                                      
+        fence;                                                          \
+        li TESTNUM, 1;                                                  \
+        li a7, 93;                                                      \
+        li a0, 0;                                                       \
+        ecall
 
 #define TESTNUM gp
 #define RVTEST_FAIL                                                     \

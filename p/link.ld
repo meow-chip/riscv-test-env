@@ -10,9 +10,9 @@ SECTIONS
   . = ALIGN(0x1000);
   .data : { *(.data) }
   .bss : { *(.bss) }
-
-  . = 0x1FFFFFF80000000;
-  .tohost : { *(.tohost) }
   _end = .;
+
+  . = 0xFFFFFFFF80000000;
+  .tohost : { *(.tohost) }
 }
 

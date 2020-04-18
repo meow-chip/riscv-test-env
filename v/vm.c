@@ -17,14 +17,12 @@
 void trap_entry();
 void pop_tf(trapframe_t*);
 
-volatile uint64_t tohost;
-volatile uint64_t fromhost;
+volatile uint64_t *p_tohost = (volatile uint64_t *) 0xFFFFFFFF80000000;
+volatile uint64_t *p_fromhost = (volatile uint64_t *) 0xFFFFFFFF80000008;
 
 static void do_tohost(uint64_t tohost_value)
 {
-  while (tohost)
-    fromhost = 0;
-  tohost = tohost_value;
+  *p_tohost = tohost_value;
 }
 
 #define pa2kva(pa) ((void*)(pa) - DRAM_BASE - MEGAPAGE_SIZE)
@@ -234,6 +232,7 @@ void vm_boot(uintptr_t test_addr)
 #if (MAX_TEST_PAGES > PTES_PER_PT) || (DRAM_BASE % MEGAPAGE_SIZE) != 0
 # error
 #endif
+  
   // map user to lowermost megapage
   l1pt[0] = ((pte_t)user_l2pt >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V;
   // map kernel to uppermost megapage
@@ -241,14 +240,23 @@ void vm_boot(uintptr_t test_addr)
   l1pt[PTES_PER_PT-1] = ((pte_t)kernel_l2pt >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V;
   kernel_l2pt[PTES_PER_PT-1] = ((pte_t)kernel_l3pt >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V;
   kernel_l3pt[PTES_PER_PT-1] = (DRAM_BASE/RISCV_PGSIZE << PTE_PPN_SHIFT) | PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
+
+  // Map serial port
+  kernel_l2pt[0x1fe] = (0xFFFFFFFF80000000ull >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V | PTE_R | PTE_W | PTE_A | PTE_D;
+
   user_l2pt[0] = ((pte_t)user_l3pt >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V;
   user_l3pt[0] = ((pte_t)user_llpt >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V;
 #elif SATP_MODE_CHOICE == SATP_MODE_SV39
   l1pt[PTES_PER_PT-1] = ((pte_t)kernel_l2pt >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V;
   kernel_l2pt[PTES_PER_PT-1] = (DRAM_BASE/RISCV_PGSIZE << PTE_PPN_SHIFT) | PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
+
+  // Map serial port
+  l1pt[0x1fe] = (0xFFFFFFFF80000000ull >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V | PTE_R | PTE_W | PTE_A | PTE_D;
+
   user_l2pt[0] = ((pte_t)user_llpt >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V;
 #elif SATP_MODE_CHOICE == SATP_MODE_SV32
-  l1pt[PTES_PER_PT-1] = (DRAM_BASE/RISCV_PGSIZE << PTE_PPN_SHIFT) | PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
+  #error
+  // l1pt[PTES_PER_PT-1] = (DRAM_BASE/RISCV_PGSIZE << PTE_PPN_SHIFT) | PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
 #else
 # error
 #endif
