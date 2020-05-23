@@ -12,7 +12,5 @@ SECTIONS
   .bss : { *(.bss) }
   _end = .;
 
-  . = 0xFFFFFFFF80000000;
-  .tohost : { *(.tohost) }
 }
 

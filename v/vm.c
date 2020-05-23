@@ -17,8 +17,8 @@
 void trap_entry();
 void pop_tf(trapframe_t*);
 
-volatile uint64_t *p_tohost = (volatile uint64_t *) 0xFFFFFFFF80000000;
-volatile uint64_t *p_fromhost = (volatile uint64_t *) 0xFFFFFFFF80000008;
+volatile uint64_t *p_tohost = (volatile uint64_t *) (0x20000000ull + (1ull << 30));
+volatile uint64_t *p_fromhost = (volatile uint64_t *) (0x20000008ull + (1ull << 30));
 
 static void do_tohost(uint64_t tohost_value)
 {
@@ -235,23 +235,22 @@ void vm_boot(uintptr_t test_addr)
   
   // map user to lowermost megapage
   l1pt[0] = ((pte_t)user_l2pt >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V;
+
+  // map tohost for both Sv48 and Sv39
+  l1pt[1] = 0 | PTE_V | PTE_R | PTE_W | PTE_A | PTE_D;
+  user_l2pt[1] = 0 | PTE_V | PTE_R | PTE_W | PTE_A | PTE_D;
+
   // map kernel to uppermost megapage
 #if SATP_MODE_CHOICE == SATP_MODE_SV48
   l1pt[PTES_PER_PT-1] = ((pte_t)kernel_l2pt >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V;
   kernel_l2pt[PTES_PER_PT-1] = ((pte_t)kernel_l3pt >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V;
   kernel_l3pt[PTES_PER_PT-1] = (DRAM_BASE/RISCV_PGSIZE << PTE_PPN_SHIFT) | PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
 
-  // Map serial port
-  kernel_l2pt[0x1fe] = (0xFFFFFFFF80000000ull >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V | PTE_R | PTE_W | PTE_A | PTE_D;
-
   user_l2pt[0] = ((pte_t)user_l3pt >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V;
   user_l3pt[0] = ((pte_t)user_llpt >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V;
 #elif SATP_MODE_CHOICE == SATP_MODE_SV39
   l1pt[PTES_PER_PT-1] = ((pte_t)kernel_l2pt >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V;
   kernel_l2pt[PTES_PER_PT-1] = (DRAM_BASE/RISCV_PGSIZE << PTE_PPN_SHIFT) | PTE_V | PTE_R | PTE_W | PTE_X | PTE_A | PTE_D;
-
-  // Map serial port
-  l1pt[0x1fe] = (0xFFFFFFFF80000000ull >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V | PTE_R | PTE_W | PTE_A | PTE_D;
 
   user_l2pt[0] = ((pte_t)user_llpt >> PGSHIFT << PTE_PPN_SHIFT) | PTE_V;
 #elif SATP_MODE_CHOICE == SATP_MODE_SV32
